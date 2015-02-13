@@ -26,6 +26,7 @@ _cache = {}
 
 @register.assignment_tag(takes_context=True)
 def article_for_object(context, obj):
+
     if not isinstance(obj, Model):
         raise TypeError(
             "A Wiki article can only be associated to a Django Model "
@@ -37,13 +38,16 @@ def article_for_object(context, obj):
     # TODO: This is disabled for now, as it should only fire once per request
     # Maybe store cache in the request object?
     if True or not obj in list(_cache.keys()):
+
         try:
             article = models.ArticleForObject.objects.get(
                 content_type=content_type,
-                object_id=obj.pk).article
+                object_id=obj.pk
+            ).article
         except models.ArticleForObject.DoesNotExist:
             article = None
         _cache[obj] = article
+
     return _cache[obj]
 
 
@@ -54,24 +58,32 @@ def wiki_render(context, article, preview_content=None):
         content = article.render(preview_content=preview_content)
     else:
         content = None
-    context.update({
-        'article': article,
-        'content': content,
-        'preview': not preview_content is None,
-        'plugins': plugin_registry.get_plugins(),
-        'STATIC_URL': django_settings.STATIC_URL,
-        'CACHE_TIMEOUT': settings.CACHE_TIMEOUT,
-    })
+
+    context.update(
+        {
+            'article': article,
+            'content': content,
+            'preview': not preview_content is None, # XXX pep8 breaking
+            'plugins': plugin_registry.get_plugins(),
+            'STATIC_URL': django_settings.STATIC_URL,
+            'CACHE_TIMEOUT': settings.CACHE_TIMEOUT,
+        }
+    )
+
     return context
 
 
 @register.inclusion_tag('wiki/includes/form.html', takes_context=True)
 def wiki_form(context, form_obj):
+
     if not isinstance(form_obj, BaseForm):
         raise TypeError(
             "Error including form, it's not a form, it's a %s" %
-            type(form_obj))
+            type(form_obj)
+        )
+
     context.update({'form': form_obj})
+
     return context
 
 
@@ -171,10 +183,13 @@ def is_locked(model):
 
 @register.assignment_tag(takes_context=True)
 def login_url(context):
+
     request = context['request']
-    qs = request.META.get('QUERY_STRING', '')
-    if qs:
-        qs = urlquote('?' + qs)
+    query_strint = request.META.get('QUERY_STRING', '')
+
+    if query_strint:
+        query_strint = urlquote('?' + query_strint)
     else:
-        qs = ''
-    return settings.LOGIN_URL + "?next=" + request.path + qs
+        query_strint = ''
+
+    return settings.LOGIN_URL + "?next=" + request.path + query_strint

@@ -10,7 +10,6 @@ from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings as django_settings
 from django.http import HttpRequest
-from django.utils.six.moves.urllib import parse
 
 from wiki.templatetags.wiki_tags import (
     article_for_object,
@@ -43,9 +42,10 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
     template = """
         {% load wiki_tags %}
         {% article_for_object obj as anything %}
+        {{ anything }}
     """
 
-    def tearDown(self):
+    def setUp(self):
 
         from wiki.templatetags import wiki_tags
         wiki_tags._cache = {}
@@ -53,7 +53,6 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
     def test_obj_arg_is_not_a_django_model(self):
 
         from wiki.templatetags import wiki_tags
-        wiki_tags._cache = {}
 
         with self.assertRaises(TypeError):
             article_for_object({}, '')
@@ -147,21 +146,23 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
         self.assertIn(article, wiki_tags._cache)
         self.assertEqual(wiki_tags._cache[article], article)
 
-        self.render(self.template, {'obj': article})
+        output = self.render(self.template, {'obj': article})
 
         self.assertIn(article, wiki_tags._cache)
         self.assertEqual(wiki_tags._cache[article], article)
 
-# TODO maybe tests for assignment in template
-#     def test_some_test(self):
-#         pass
+        expected = 'Article without content (1)'
 
-# TODO tests cache it self
-#     def test_some_test(self):
-#         pass
+        self.assertIn(expected, output)
 
 
+# TODO manage plugins in template
 class WikiRenderTest(BaseTestCase):
+
+    template = """
+        {% load wiki_tags %}
+        {% wiki_render article pc %}
+    """
 
     def tearDown(self):
         from wiki.core.plugins import registry
@@ -195,6 +196,9 @@ class WikiRenderTest(BaseTestCase):
         self.assertEqual(output['STATIC_URL'], django_settings.STATIC_URL)
         self.assertEqual(output['CACHE_TIMEOUT'], settings.CACHE_TIMEOUT)
 
+        # Additional check
+        self.render(self.template, {'article': article, 'pc': None})
+
     def test_called_with_preview_content_and_article_have_current_revision(
             self):
 
@@ -224,15 +228,15 @@ class WikiRenderTest(BaseTestCase):
         output = wiki_render({}, article, preview_content=content)
 
         self.assertCountEqual(self.keys, output)
-
         self.assertEqual(output['article'], article)
-
         self.assertMultiLineEqual(output['content'], example)
         self.assertEqual(output['preview'], True)
-
         self.assertEqual(output['plugins'], {'spam': 'eggs'})
         self.assertEqual(output['STATIC_URL'], django_settings.STATIC_URL)
         self.assertEqual(output['CACHE_TIMEOUT'], settings.CACHE_TIMEOUT)
+
+        output = self.render(self.template, {'article': article, 'pc': content})
+        self.assertIn(example, output)
 
     def test_called_with_preview_content_and_article_dont_have_current_revision(
             self):
@@ -263,6 +267,8 @@ class WikiRenderTest(BaseTestCase):
         self.assertEqual(output['STATIC_URL'], django_settings.STATIC_URL)
         self.assertEqual(output['CACHE_TIMEOUT'], settings.CACHE_TIMEOUT)
 
+        self.render(self.template, {'article': article, 'pc': content})
+
 
 class WikiFormTest(BaseTestCase):
 
@@ -289,6 +295,7 @@ class WikiFormTest(BaseTestCase):
     def test_form_obj_is_baseform_instance(self):
 
         context = {'test_key': 'test_value'}
+
         # not by any special reasons, just a form
         form_obj = CreateRootForm()
 
@@ -297,6 +304,7 @@ class WikiFormTest(BaseTestCase):
         self.assertEqual(context, {'test_key': 'test_value', 'form': form_obj})
 
         self.render(self.template, {'form_obj': form_obj})
+
         self.assertEqual(context, {'test_key': 'test_value', 'form': form_obj})
 
 
@@ -304,7 +312,8 @@ class LoginUrlTest(BaseTestCase):
 
     template = """
         {% load wiki_tags %}
-        {% login_url %}
+        {% login_url as some_url %}
+        {{ some_url }}
     """
 
     def test_no_request_in_context(self):
@@ -312,9 +321,8 @@ class LoginUrlTest(BaseTestCase):
         with self.assertRaises(KeyError):
             login_url({})
 
-        # XXX
-        # with self.assertRaises(KeyError):
-        # r = self.render(self.template, {})
+        with self.assertRaises(KeyError):
+            self.render(self.template, {})
 
     def test_login_url_if_no_query_string_in_request(self):
 
@@ -328,6 +336,10 @@ class LoginUrlTest(BaseTestCase):
 
         self.assertEqual(output, expected)
 
+        output = self.render(self.template, {'request': r})
+
+        self.assertIn(expected, output)
+
     def test_login_url_if_query_string_is_empty(self):
 
         r = HttpRequest()
@@ -340,16 +352,27 @@ class LoginUrlTest(BaseTestCase):
 
         self.assertEqual(output, expected)
 
+        output = self.render(self.template, {'request': r})
+
+        self.assertIn(expected, output)
+
     def test_login_url_if_query_string_is_not_empty(self):
 
         r = HttpRequest()
         r.META = {'QUERY_STRING': 'title=Main_page&action=raw'}
         r.path = 'best/test/page/ever/'
 
-        output = login_url({'request': r})
-        output = parse.unquote(output)  # decode query string
+        context = {'request': r}
 
-        expected = ('/_accounts/login/'
-                    '?next=best/test/page/ever/?title=Main_page&action=raw')
+        output = login_url(context)
+
+        expected = (
+            '/_accounts/login/'
+            '?next=best/test/page/ever/%3Ftitle%3DMain_page%26action%3Draw'
+        )
 
         self.assertEqual(output, expected)
+
+        output = self.render(self.template, {'request': r})
+
+        self.assertIn(expected, output)
