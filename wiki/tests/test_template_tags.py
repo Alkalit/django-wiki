@@ -22,7 +22,7 @@ from wiki.models import Article, ArticleForObject, ArticleRevision
 from wiki.conf import settings
 from wiki.forms import CreateRootForm
 
-from wiki.tests.base import BaseTestCase
+from wiki.tests.base import TemplateTestCase
 
 
 __doc__ = """
@@ -37,7 +37,7 @@ class TestModel(Model):
 
 
 # XXX article_for_object accepts context, but not using it
-class ArticleForObjectTemplatetagTest(BaseTestCase):
+class ArticleForObjectTemplatetagTest(TemplateTestCase):
 
     template = """
         {% load wiki_tags %}
@@ -61,7 +61,7 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
             article_for_object({'request': 100500}, {})
 
         with self.assertRaises(TypeError):
-            self.render(self.template, {'obj': 'tiger!'})
+            self.render({'obj': 'tiger!'})
 
         self.assertEqual(len(wiki_tags._cache), 0)
 
@@ -76,7 +76,7 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
         self.assertEqual(cache[obj], None)
         self.assertEqual(len(cache), 1)
 
-        self.render(self.template, {'obj': obj})
+        self.render({'obj': obj})
 
         self.assertIn(obj, cache)
         self.assertEqual(cache[obj], None)
@@ -100,7 +100,7 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
         self.assertEqual(cache[a], a)
         self.assertEqual(len(cache), 1)
 
-        self.render(self.template, {'obj': a})
+        self.render({'obj': a})
 
         self.assertIn(a, cache)
         self.assertEqual(cache[a], a)
@@ -119,7 +119,7 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
         self.assertEqual(wiki_tags._cache[model], None)
         self.assertEqual(len(wiki_tags._cache), 1)
 
-        self.render(self.template, {'obj': model})
+        self.render({'obj': model})
 
         self.assertIn(model, wiki_tags._cache)
         self.assertEqual(wiki_tags._cache[model], None)
@@ -146,7 +146,7 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
         self.assertIn(article, wiki_tags._cache)
         self.assertEqual(wiki_tags._cache[article], article)
 
-        output = self.render(self.template, {'obj': article})
+        output = self.render({'obj': article})
 
         self.assertIn(article, wiki_tags._cache)
         self.assertEqual(wiki_tags._cache[article], article)
@@ -157,7 +157,7 @@ class ArticleForObjectTemplatetagTest(BaseTestCase):
 
 
 # TODO manage plugins in template
-class WikiRenderTest(BaseTestCase):
+class WikiRenderTest(TemplateTestCase):
 
     template = """
         {% load wiki_tags %}
@@ -197,7 +197,7 @@ class WikiRenderTest(BaseTestCase):
         self.assertEqual(output['CACHE_TIMEOUT'], settings.CACHE_TIMEOUT)
 
         # Additional check
-        self.render(self.template, {'article': article, 'pc': None})
+        self.render({'article': article, 'pc': None})
 
     def test_called_with_preview_content_and_article_have_current_revision(
             self):
@@ -235,7 +235,7 @@ class WikiRenderTest(BaseTestCase):
         self.assertEqual(output['STATIC_URL'], django_settings.STATIC_URL)
         self.assertEqual(output['CACHE_TIMEOUT'], settings.CACHE_TIMEOUT)
 
-        output = self.render(self.template, {'article': article, 'pc': content})
+        output = self.render({'article': article, 'pc': content})
         self.assertIn(example, output)
 
     def test_called_with_preview_content_and_article_dont_have_current_revision(
@@ -267,10 +267,10 @@ class WikiRenderTest(BaseTestCase):
         self.assertEqual(output['STATIC_URL'], django_settings.STATIC_URL)
         self.assertEqual(output['CACHE_TIMEOUT'], settings.CACHE_TIMEOUT)
 
-        self.render(self.template, {'article': article, 'pc': content})
+        self.render({'article': article, 'pc': content})
 
 
-class WikiFormTest(BaseTestCase):
+class WikiFormTest(TemplateTestCase):
 
     template = """
         {% load wiki_tags %}
@@ -288,7 +288,7 @@ class WikiFormTest(BaseTestCase):
         self.assertEqual(context, {'test_key': 'test_value'})
 
         with self.assertRaises(TypeError):
-            self.render(self.template, {100500})
+            self.render({100500})
 
         self.assertEqual(context, {'test_key': 'test_value'})
 
@@ -303,12 +303,12 @@ class WikiFormTest(BaseTestCase):
 
         self.assertEqual(context, {'test_key': 'test_value', 'form': form_obj})
 
-        self.render(self.template, {'form_obj': form_obj})
+        self.render({'form_obj': form_obj})
 
         self.assertEqual(context, {'test_key': 'test_value', 'form': form_obj})
 
 
-class LoginUrlTest(BaseTestCase):
+class LoginUrlTest(TemplateTestCase):
 
     template = """
         {% load wiki_tags %}
@@ -322,7 +322,7 @@ class LoginUrlTest(BaseTestCase):
             login_url({})
 
         with self.assertRaises(KeyError):
-            self.render(self.template, {})
+            self.render({})
 
     def test_login_url_if_no_query_string_in_request(self):
 
@@ -336,7 +336,7 @@ class LoginUrlTest(BaseTestCase):
 
         self.assertEqual(output, expected)
 
-        output = self.render(self.template, {'request': r})
+        output = self.render({'request': r})
 
         self.assertIn(expected, output)
 
@@ -352,7 +352,7 @@ class LoginUrlTest(BaseTestCase):
 
         self.assertEqual(output, expected)
 
-        output = self.render(self.template, {'request': r})
+        output = self.render({'request': r})
 
         self.assertIn(expected, output)
 
@@ -373,6 +373,6 @@ class LoginUrlTest(BaseTestCase):
 
         self.assertEqual(output, expected)
 
-        output = self.render(self.template, {'request': r})
+        output = self.render({'request': r})
 
         self.assertIn(expected, output)
